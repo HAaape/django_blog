@@ -5,6 +5,8 @@
         <div class="row">
             <div class="col-12">
                 <br>
+                <br>
+                <br>
                 <form method="post" action=".">
                     {% csrf_token %}
                     <!-- 账号 -->
@@ -18,8 +20,15 @@
                         <input type="password" class="form-control" id="password" name="password">
                     </div>
                     <!-- 提交按钮 -->
-                    <button type="submit" class="btn btn-primary">提交</button>
+                    <button type="submit" class="btn btn-primary">起飞</button>
                 </form>
+
+                <br>
+                <br>
+                <br>
+                <h5>还没有账号？</h5>
+                <h5>李在赣神馍¿ 点击<a href="{% url "userprofile:register" %}"> 芜 湖 起 飞 </a>成为阴间飞行员！</h5>
+                <br>
             </div>
         </div>
     </div>
