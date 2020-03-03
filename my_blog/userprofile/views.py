@@ -1,4 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
+# 引入验证登录的装饰器
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from .forms import UserLoginForm, UserRegisterForm
@@ -70,3 +73,24 @@ def user_register(request):
 
     else:
         return HttpResponse('请使用GET或POST请求数据')
+
+
+# 用户删除
+# @login_required要求调用user_delete()函数时，用户必须登录；如果未登录则不执行函数，将页面重定向到/userprofile/login/地址去
+@login_required(login_url='/userprofile/login/')
+def user_delete(request, id):
+
+    if request.method == 'POST':
+        user = User.objects.get(id=id)
+
+        # 验证登录用户、待删除用户是否相同
+        if request.user == user:
+            # 退出登录，删除数据并返回博客列表
+            logout(request)
+            user.delete()
+            return redirect('article:article_list')
+        else:
+            return HttpResponse('你没有删除操作的权限')
+
+    else:
+        return HttpResponse('仅接受POST请求')
