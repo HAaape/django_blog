@@ -1,3 +1,4 @@
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from .models import ArticlePost
 import markdown
@@ -39,19 +40,21 @@ def article_detail(request, id):
 
 
 # 写文章的视图
+@login_required(login_url='userprofile/login/')
 def article_create(request):
     # 判断用户是否提交数据
     if request.method == "POST":
         # 将提交的数据赋值到表单实例中
         article_post_form = ArticlePostForm(data=request.POST)
+
         # 判断提交的数据是否满足模型的要求
         if article_post_form.is_valid():
             # 保存数据，但暂时不提交到数据库中
             new_article = article_post_form.save(commit=False)
-            # 指定数据库中 id=1 的用户为作者
+            # 指定目前登录的用户为作者
             # 如果你进行过删除数据表的操作，可能会找不到id=1的用户
             # 此时请重新创建用户，并传入此用户的id
-            new_article.author = User.objects.get(id=1)
+            new_article.author = User.objects.get(id=request.user.id)
             # 将新文章保存到数据库中
             new_article.save()
             # 完成后返回到文章列表
@@ -59,6 +62,7 @@ def article_create(request):
         # 如果数据不合法，返回错误信息
         else:
             return HttpResponse("表单内容有误，请重新填写。")
+
     # 如果用户请求获取数据
     else:
         # 创建表单类实例
@@ -70,10 +74,11 @@ def article_create(request):
 
 
 # 删除文章
+@login_required(login_url='userprofile/login/')
 def article_safe_delete(request, id):
     if request.method == 'POST':
         # 根据 id 获取需要删除的文章
-        article = ArticlePost.objects.get(id=id)
+        article = ArticlePost.objects.get(id=request.user.id)
         # 调用.delete()方法删除文章
         article.delete()
         # 完成删除后返回文章列表
@@ -97,6 +102,7 @@ def article_update(request, id):
         # 将提交的数据赋值到表单实例中
         article_post_form = ArticlePostForm(data=request.POST)
         # 判断提交的数据是否满足模型的要求
+
         if article_post_form.is_valid():
             # 保存新写入的 title、body 数据并保存
             article.title = request.POST['title']
