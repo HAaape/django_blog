@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.shortcuts import render
 from .models import ArticlePost
 import markdown
@@ -12,7 +13,15 @@ from django.contrib.auth.models import User
 # Create your views here.
 def article_list(request):
     # 取出所有博客文章
-    articles = ArticlePost.objects.all()
+    article_list = ArticlePost.objects.all()
+
+    # 每页显示的文章数量
+    paginator = Paginator(article_list, 6)
+    # 获取url中的页码
+    page = request.GET.get('page')
+    # 将导航对象相应的页码内容返回给articles
+    articles = paginator.get_page(page)
+
     # 需要传递给模板（templates）的对象
     context = {'articles': articles}
     # render函数：载入模板，并返回context对象
