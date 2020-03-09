@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import render
 from .models import ArticlePost
 import markdown
@@ -12,8 +13,36 @@ from django.contrib.auth.models import User
 
 # Create your views here.
 def article_list(request):
-    # 取出所有博客文章
-    article_list = ArticlePost.objects.all()
+    search = request.GET.get('search')
+    order = request.GET.get('order')
+
+    # 用户搜索逻辑
+    if search:
+        if order == 'total_views':
+            # 用 Q对象 进行联合搜索
+            article_list = ArticlePost.objects.filter(
+                Q(title__icontains=search) | Q(body__icontains=search)
+            ).order_by('-total_views')
+        else:
+            article_list = ArticlePost.objects.filter(
+                Q(title__icontains=search) | Q(body__icontains=search)
+            )
+    else:
+        # 将 search 参数重置为空
+        search = ''
+        if order == 'total_views':
+            article_list = ArticlePost.objects.all().order_by('-total_views')
+        else:
+            article_list = ArticlePost.objects.all()
+
+    # 根据GET请求中查询条件
+    # 返回不同排序的对象数组
+    if request.GET.get('order') == 'total_views':
+        article_list = ArticlePost.objects.all().order_by('-total_views')
+        order = 'total_views'
+    else:
+        article_list = ArticlePost.objects.all()
+        order = 'normal'
 
     # 每页显示的文章数量
     paginator = Paginator(article_list, 6)
@@ -23,7 +52,7 @@ def article_list(request):
     articles = paginator.get_page(page)
 
     # 需要传递给模板（templates）的对象
-    context = {'articles': articles}
+    context = {'articles': articles, 'order': order, 'search': search}
     # render函数：载入模板，并返回context对象
     return render(request, 'article/list.html', context)
 
@@ -32,16 +61,19 @@ def article_list(request):
 def article_detail(request, id):
     # 取出相应的文章
     article = ArticlePost.objects.get(id=id)
+    # 浏览量 +1
+    article.total_views += 1
+    article.save(update_fields=['total_views'])
     # 将markdown语法渲染成html样式
     article.body = markdown.markdown(article.body.replace("\r\n", '  \n'),
-                                    extensions=[
-                                        # 包含 缩写、表格等常用扩展
-                                        'markdown.extensions.extra',
-                                        # 语法高亮扩展
-                                        'markdown.extensions.codehilite',
-                                        # 目录扩展
-                                        'markdown.extensions.toc',
-                                    ], safe_mode=True, enable_attributes=False)
+                                     extensions=[
+                                         # 包含 缩写、表格等常用扩展
+                                         'markdown.extensions.extra',
+                                         # 语法高亮扩展
+                                         'markdown.extensions.codehilite',
+                                         # 目录扩展
+                                         'markdown.extensions.toc',
+                                     ], safe_mode=True, enable_attributes=False)
     # 需要传递给模板的对象
     context = {'article': article}
     # 载入模板，并返回context对象
@@ -106,6 +138,11 @@ def article_update(request, id):
     """
     # 获取需要修改的具体文章对象
     article = ArticlePost.objects.get(id=id)
+
+    # 过滤非作者的用户
+    if request.user != article.author:
+        return HttpResponse('你无权修改这篇文章')
+
     # 判断用户是否为 POST 提交表单数据
     if request.method == 'POST':
         # 将提交的数据赋值到表单实例中
